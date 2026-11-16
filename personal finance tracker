@@ -14,3 +14,56 @@ def save_expenses(expenses):
     """Save expenses to a JSON file."""
     with open(FILENAME, "w") as file:
         json.dump(expenses, file, indent=4)
+from storage import save_expenses
+
+def add_expense(expenses):
+    """Add a new expense."""
+    description = input("Enter expense description (e.g., Grocery, Rent): ").strip()
+    try:
+        amount = float(input("Enter amount ($): "))
+    except ValueError:
+        print("Invalid amount! Please enter a number.")
+        return
+
+    category = input("Enter category (e.g., Food, Transport, Utilities): ").strip()
+    
+    expense = {
+        "description": description,
+        "amount": amount,
+        "category": category
+    }
+    
+    expenses.append(expense)
+    save_expenses(expenses)
+    print(f"Successfully added: {description} (${amount:.2f})")
+
+def view_expenses(expenses):
+    """View all logged expenses."""
+    if not expenses:
+        print("\nNo expenses recorded yet.")
+        return
+
+    print("\n--- All Expenses ---")
+    print(f"{'Index':<6} | {'Description':<15} | {'Category':<12} | {'Amount':<8}")
+    print("-" * 50)
+    for idx, exp in enumerate(expenses, 1):
+        print(f"{idx:<6} | {exp['description']:<15} | {exp['category']:<12} | ${exp['amount']:<8.2f}")
+
+def show_summary(expenses):
+    """Show total spending and breakdown by category."""
+    if not expenses:
+        print("\nNo expenses to summarize.")
+        return
+
+    total_spent = sum(exp["amount"] for exp in expenses)
+    
+    category_totals = {}
+    for exp in expenses:
+        cat = exp["category"]
+        category_totals[cat] = category_totals.get(cat, 0) + exp["amount"]
+
+    print("\n--- Expense Summary ---")
+    print(f"Total Spent: ${total_spent:.2f}")
+    print("\nBreakdown by Category:")
+    for cat, amt in category_totals.items():
+        print(f"  - {cat}: ${amt:.2f}")
