@@ -111,3 +111,90 @@ def monthly_summary(transactions):
         m = t["date"][:7]
         months[m][0 if t["type"] == "income" else 1] += t["amount"]
     return dict(sorted(months.items()))
+# ---------------------------------------------------------------- summary
+def build_summary(transactions):
+    """Return the whole summary as a string (used for screen and file export)."""
+    out = []
+    income, expense, balance = totals(transactions)
+    out.append("=" * 50)
+    out.append("FINANCE SUMMARY")
+    out.append("=" * 50)
+    out.append(f"Total Income   : {income:12.2f}")
+    out.append(f"Total Expenses : {expense:12.2f}")
+    out.append(f"Balance        : {balance:12.2f}")
+    if income > 0:
+        out.append(f"Savings Rate   : {balance / income * 100:11.1f}%")
+
+    cats = expenses_by_category(transactions)
+    out.append("\nExpenses by Category")
+    if cats:
+        out.append(table_str(["Category", "Amount", "% of Expenses"],
+                             [[c, f"{a:.2f}", f"{a / expense * 100:.1f}%"]
+                              for c, a in cats.items()]))
+        top = next(iter(cats))
+        out.append(f"Highest spending category: {top} ({cats[top]:.2f})")
+    else:
+        out.append("  No expenses recorded.")
+
+    months = monthly_summary(transactions)
+    out.append("\nMonthly Summary")
+    if months:
+        out.append(table_str(["Month", "Income", "Expenses", "Net"],
+                             [[m, f"{v[0]:.2f}", f"{v[1]:.2f}", f"{v[0] - v[1]:.2f}"]
+                              for m, v in months.items()]))
+    else:
+        out.append("  No data.")
+    return "\n".join(out)
+
+
+def table_str(headers, rows):
+    """Same as print_table but returns a string."""
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        print_table(headers, rows)
+    return buf.getvalue().rstrip()
+
+
+def show_summary(transactions):
+    if not transactions:
+        print("  No data to summarise.")
+        return
+    print(build_summary(transactions))
+
+
+def export_report(transactions):
+    if not transactions:
+        print("  No data to export.")
+        return
+    path = input("Report file name [report.txt]: ").strip() or "report.txt"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(build_summary(transactions) + "\n")
+    print(f"  Report saved to {path}")
+
+
+# ---------------------------------------------------------------- chart
+def pie_chart(transactions):
+    cats = expenses_by_category(transactions)
+    if not cats:
+        print("  No expenses to plot.")
+        return
+    try:
+        import matplotlib
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("  matplotlib is not installed. Run:  pip install matplotlib")
+        return
+
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.pie(list(cats.values()), labels=list(cats.keys()),
+           autopct="%1.1f%%", startangle=90, pctdistance=0.8)
+    ax.set_title("Expenses by Category")
+    fig.tight_layout()
+    fig.savefig("expense_pie_chart.png", dpi=150)
+    print("  Chart saved as expense_pie_chart.png")
+    try:
+        plt.show()
+    except Exception:
+        pass
+    plt.close(fig)
