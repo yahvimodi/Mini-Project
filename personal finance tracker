@@ -1,1 +1,64 @@
+import csv
+import os
+from collections import defaultdict
+from datetime import datetime
 
+
+DATA_FILE = "finance_data.csv"
+FIELDS = ["date", "type", "category", "amount", "description"]
+
+
+# ---------------------------------------------------------------- storage
+def load_data(path=DATA_FILE):
+    """Read transactions from a CSV file. Returns a list of dicts."""
+    transactions = []
+    if not os.path.exists(path):
+        return transactions
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row_no, row in enumerate(reader, start=2):
+            tx = clean_row(row)
+            if tx is None:
+                print(f"  Skipped invalid row {row_no} in {path}")
+                continue
+            transactions.append(tx)
+    return transactions
+
+
+def save_data(transactions, path=DATA_FILE):
+    """Write all transactions to a CSV file."""
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        writer.writeheader()
+        for tx in transactions:
+            writer.writerow(tx)
+
+
+def clean_row(row):
+    """Validate and normalise one row. Returns dict or None if invalid."""
+    try:
+        date = datetime.strptime(str(row["date"]).strip(), "%Y-%m-%d").strftime("%Y-%m-%d")
+        tx_type = str(row["type"]).strip().lower()
+        if tx_type not in ("income", "expense"):
+            return None
+        category = str(row["category"]).strip().title() or "Other"
+        amount = float(row["amount"])
+        if amount <= 0:
+            return None
+        description = str(row.get("description", "") or "").strip()
+        return {"date": date, "type": tx_type, "category": category,
+                "amount": round(amount, 2), "description": description}
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
+def import_file(transactions):
+    """Ask the user for a CSV path and merge its rows into the data."""
+    path = input("Enter path of the CSV file to import: ").strip().strip('"')
+    if not os.path.isfile(path):
+        print("  File not found.")
+        return
+    new = load_data(path)
+    transactions.extend(new)
+    save_data(transactions)
+    print(f"  Imported {len(new)} transactions and saved.")
