@@ -62,3 +62,52 @@ def import_file(transactions):
     transactions.extend(new)
     save_data(transactions)
     print(f"  Imported {len(new)} transactions and saved.")
+# ---------------------------------------------------------------- tables
+def print_table(headers, rows):
+    """Print a simple text table (no external libraries needed)."""
+    rows = [[str(c) for c in r] for r in rows]
+    widths = [len(h) for h in headers]
+    for r in rows:
+        for i, c in enumerate(r):
+            widths[i] = max(widths[i], len(c))
+    line = "+" + "+".join("-" * (w + 2) for w in widths) + "+"
+    fmt = "| " + " | ".join("{:<%d}" % w for w in widths) + " |"
+    print(line)
+    print(fmt.format(*headers))
+    print(line)
+    for r in rows:
+        print(fmt.format(*r))
+    print(line)
+
+
+def show_transactions(transactions):
+    if not transactions:
+        print("  No transactions yet.")
+        return
+    rows = [[i + 1, t["date"], t["type"], t["category"],
+             f"{t['amount']:.2f}", t["description"]]
+            for i, t in enumerate(sorted(transactions, key=lambda x: x["date"]))]
+    print_table(["#", "Date", "Type", "Category", "Amount", "Description"], rows)
+
+
+# ---------------------------------------------------------------- calculations
+def totals(transactions):
+    income = sum(t["amount"] for t in transactions if t["type"] == "income")
+    expense = sum(t["amount"] for t in transactions if t["type"] == "expense")
+    return income, expense, income - expense
+
+
+def expenses_by_category(transactions):
+    cat = defaultdict(float)
+    for t in transactions:
+        if t["type"] == "expense":
+            cat[t["category"]] += t["amount"]
+    return dict(sorted(cat.items(), key=lambda x: x[1], reverse=True))
+
+
+def monthly_summary(transactions):
+    months = defaultdict(lambda: [0.0, 0.0])
+    for t in transactions:
+        m = t["date"][:7]
+        months[m][0 if t["type"] == "income" else 1] += t["amount"]
+    return dict(sorted(months.items()))
